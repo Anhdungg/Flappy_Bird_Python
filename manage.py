@@ -1,10 +1,9 @@
 import pygame
-import time
-from pynput import keyboard
+import random
 
 SIZE = WIDTH, HEIGHT = 288, 512
 FPS = 60
-POS_Y_BIRD_UP = 150
+POS_BIRD_UP = 100
 ICON = pygame.image.load("sprites/bird.png")
 ICON.convert
 BACKGROUND_MAIN = pygame.image.load("sprites/background-day.png")
@@ -15,15 +14,59 @@ BIRTH_RED = [pygame.image.load("sprites/bluebird-upflap.png"), pygame.image.load
 pygame.image.load("sprites/bluebird-downflap.png")]
 FLOOR_IMAGE = pygame.image.load("sprites/base.png")
 FLOOR_IMAGE.convert
+GAME_OVER = pygame.image.load("sprites/gameover.png")
+GAME_OVER.convert
+PIPE_GREEN = pygame.image.load("sprites/pipe-green.png")
+PIPE_GREEN.convert
+PIPE_RED = pygame.image.load("sprites/pipe-red.png")
+PIPE_RED.convert
 CLOCK = pygame.time.Clock()
 
-X = 30
-Y = 50
+
+countImageFloor = 0
+countImageBird = 0
 
 pygame.init()
 screen = pygame.display.set_mode(SIZE)
 pygame.display.set_icon(ICON)
 pygame.display.set_caption("Flappy Bird")
+
+class Pipe:
+    def __init__(self, image):
+        self.pipe = image
+        self.posX = 288
+        self.posY = random.randrange(175, 375)
+        self.speedMove = 2
+
+    def getPosX(self):
+        return self.posX
+
+    def setPosX(self, posX):
+        self.posX = posX
+
+    def getPosY(self):
+        return self.posY
+
+    def setPosY(self, posY):
+        self.posY = posY
+
+    def getImage(self):
+        return self.pipe
+
+    def setSpeed(self, speed):
+        self.speedMove = speed
+    
+    def getSpeed(self):
+        return self.speedMove
+
+    def move(self):
+        if self.posX > -53:
+            self.posX-=self.speedMove
+
+    def drawImage(self, screen):
+        screen.blit(self.pipe, (self.posX, self.posY))
+        screen.blit(pygame.transform.rotate(self.pipe, 180), (self.posX, self.posY-(150+320)))
+
 
 def begin():
     statusRun = True
@@ -40,54 +83,77 @@ def begin():
         pygame.display.update()
         CLOCK.tick(FPS)
 
+
+def animatedFloor():
+    global countImageFloor
+    countImageFloor-=1
+    if countImageFloor < -48:
+        countImageFloor = 0
+    screen.blit(FLOOR_IMAGE, (countImageFloor, 400))
+
+def animatedBird(posBirdUp):
+    global countImageBird
+    countImageBird+=1
+    if countImageBird>17:
+        countImageBird=0
+    screen.blit(BIRTH_RED[int(countImageBird/6)], (30,posBirdUp))
+
+def gameOver(statusKeyDown):
+    screen.blit(GAME_OVER, (48, 48))
+    if statusKeyDown:
+        pass
+
 def main():
     if not begin():
         pygame.quit()
         return
+    list = [Pipe(PIPE_GREEN)]
     statusRun = True
     statusKeyDown = False
-    countImageBird = 0
-    posYBird = 50
-    countPosXFloor = 0
-    count=2
-    while(statusRun):
+    posBirdUp = 50
+    dropBird = 0
+    topBirdUp = 0
+    while(statusRun): 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 statusRun = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    Y = posYBird - POS_Y_BIRD_UP
-                    statusKeyDown = True
-                    count = 10 
                 if event.key == pygame.K_ESCAPE:
                     statusRun = False
+                if event.key == pygame.K_SPACE:
+                    topBirdUp = posBirdUp - POS_BIRD_UP
+                    statusKeyDown = True
+                    dropBird = 10 
         if statusKeyDown :
-            if posYBird>Y:
-                posYBird = posYBird - count
-                if posYBird < 0:
-                    posYBird = 0
+            if posBirdUp>topBirdUp:
+                posBirdUp -= dropBird
+                if posBirdUp < 0:
+                    posBirdUp = 0
                     statusKeyDown = False
-                    count = 2
-                count = abs(count-0.32)
+                    dropBird = 2
+                dropBird = dropBird-0.2
+                if dropBird < 1:
+                    dropBird = 1
             else:
                 statusKeyDown = False
-                count = 2 
+                dropBird = 2 
         else:
-            if posYBird<375:
-                posYBird+=count
-                count+=0.5
+            if posBirdUp<375:
+                posBirdUp+=dropBird
+                dropBird+=0.2
             else:
-                count = 10
-
-        countPosXFloor-=1
-        countImageBird+=1
-        if countImageBird>17:
-            countImageBird=0
-        if countPosXFloor < -48:
-            countPosXFloor = 0
+                dropBird = 10
         screen.blit(BACKGROUND_MAIN, (0,0))
-        screen.blit(BIRTH_RED[int(countImageBird/6)], (X,posYBird))
-        screen.blit(FLOOR_IMAGE, (countPosXFloor, 400))
+        if list[len(list)-1].getPosX() < 100:
+            list.append(Pipe(PIPE_GREEN))
+        for pipe  in list:
+            pipe.setSpeed(5)
+            pipe.move()
+            pipe.drawImage(screen)
+        if list[0].getPosX() <= -53:
+            list.remove(list[0])
+        animatedBird(posBirdUp)
+        animatedFloor()
         pygame.display.update()
         CLOCK.tick(FPS)
     pygame.quit()
